@@ -1,4 +1,6 @@
 body 
 {background-colour = red
 margin:20d
+padding xxxx
 }
+
