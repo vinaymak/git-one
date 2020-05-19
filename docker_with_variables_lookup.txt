@@ -120,5 +120,16 @@ root@jayavi1c:~/docker#
 
 
 
+erraform workspace new prod
+  382  terraform workspace new dev
+  383  terraform workspace select dev
+  384  terraform apply
+  385* 
+  386  terraform workspace select prod
+  
+  export TF_VAR_env=prod
+  terraform console
+  lookup(var.ext_port, var.env)
+
 
 
