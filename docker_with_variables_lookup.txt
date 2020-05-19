@@ -1,0 +1,124 @@
+root@jayavi1c:~/docker/container# cat *.tf
+# main file of the container module
+resource "docker_container" "container_id" {
+  name  = "${var.name}"
+  image = "${var.image}"
+  ports {
+    internal = "${var.int_port}"
+    external = "${var.ext_port}"
+  }
+
+}
+
+#output file of the container image
+output "ip" {
+  value = "${docker_container.container_id.ip_address}"
+}
+
+output "container_name" {
+  value = "${docker_container.container_id.name}"
+
+}
+
+
+
+# variables files for the container
+
+variable "image" {}
+variable "name" {}
+variable "int_port" {}
+variable "ext_port" {}
+
+================================================================================================
+
+root@jayavi1c:~/docker/image# cat *.tf
+# main file in image
+ resource  "docker_image" "image_id" {
+    name  = "${var.image}"
+}
+# output file of the image module
+
+output "image_out" {
+ value = "${docker_image.image_id.latest}"
+}
+# variables file for image module
+variable "image" {
+ description = "name of the image"
+}
+
+=========================================================================================================
+root@jayavi1c:~/docker# cat main.tf
+#Main file get the image 
+module "image" {
+  source = "./image"
+  image  = "${lookup(var.image, var.env)}"
+}
+
+# start the container
+module container {
+  source   = "./container"
+  image    = "${module.image.image_out}"
+  name     = "${lookup(var.container_name, var.env)}"
+  int_port = "${lookup(var.int_port, var.env)}"
+  ext_port = "${lookup(var.ext_port, var.env)}"
+
+}
+
+=======================================================================================================
+root@jayavi1c:~/docker# cat variables.tf 
+
+#Define all variables here
+
+variable "env" {
+  description = "env: dev or prod"
+}
+
+
+
+variable "container_name" {
+
+  description = "Name of the container"
+  type        = "map"
+  default = {
+    dev  = "dev_blog"
+    prod = "prod_blog"
+  }
+
+}
+variable "image" {
+  description = "Name of the image"
+  type        = "map"
+  default = {
+    dev  = "ghost:latest"
+    prod = "ghost:alpine"
+  }
+}
+
+
+variable "int_port" {
+  description = "internal port of the image"
+  type        = "map"
+  default = {
+    dev  = "2368"
+    prod = "2368"
+
+  }
+}
+
+
+variable "ext_port" {
+  description = "external port of the image"
+  type        = "map"
+  default = {
+    dev  = "8080"
+    prod = "80"
+  }
+}
+
+root@jayavi1c:~/docker# 
+
+
+
+
+
+

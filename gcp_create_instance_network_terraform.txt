@@ -1,0 +1,193 @@
+1.	Simple script to create network using terraform
+
+vinay_makhijani@cloudshell:~/google (vinmak-test-pro)$ cat main.tf
+
+
+provider "google" {
+  version = "3.5.0"
+
+  credentials = file("terraform.json")
+
+  project =  "vinmak-test-pro"
+  region  =  "europe-west2"
+  zone    = "europe-west2-c"
+}
+
+resource "google_compute_network" "vpc_network" {
+  name = "new-terraform-network"
+}
+
+terraform {
+  backend "gcs" {
+    bucket = "terravin1"
+    prefix = "terraform1"
+
+   }
+}
+
+
+2.	Create the compute engine and assign the static IP and get the IP directed to the output file.
+
+Main.tf
+
+provider "google" {
+  credentials = file("terraform.json")
+
+  project =  "vinmak-test-pro"
+  region  =  "europe-west2"
+  zone    = "europe-west2-c"
+}
+
+resource "google_compute_network" "vpc_network" {
+  name = "new-terraform-network"
+}
+resource "google_compute_instance" "vm_instance" {
+  name         = "terraform-instanco1"
+  machine_type = "f1-micro"
+
+  boot_disk {
+    initialize_params {
+      image = "debian-cloud/debian-9"
+    }
+  }
+
+  network_interface {
+    network = google_compute_network.vpc_network.name
+    access_config {
+    }
+  }
+}
+resource "google_compute_address" "static_ip"{
+  name = "terraform-static-ip"
+}
+
+
+
+
+Output.tf
+
+output "ip" {
+  value = google_compute_address.static_ip.address
+  }
+
+
+3.	Using Modules – Basic network with variable and subnet
+
+    
+Main.tf
+module "network" {
+  source  = "terraform-google-modules/network/google"
+  version = "2.3.0"
+  network_name = "terraform-vpc-network"
+  project_id   = var.project
+
+  subnets = [
+    {
+      subnet_name   = "subnet-01"
+      subnet_ip     = var.cidr
+      subnet_region = var.region
+    },
+  ]
+
+  secondary_ranges = {
+    subnet-01 = []
+  }
+}
+
+
+Variables.tf
+variable "project" {
+  default = "vinmak-test-pro"
+}
+
+variable "region" {
+  default = "europe-west2" 
+}
+
+variable "zone"  {
+  default = "europe-west2-c"
+}
+
+variable "cidr_ip" {
+  default = "10.0.0.0/16"
+}
+
+
+
+
+4.	Network with subnet and firewall
+
+
+Main.tf
+module "network" {
+  source  = "terraform-google-modules/network/google"
+  version = "2.3.0"
+  network_name = "my-vpc-network2"
+  project_id   = var.project
+
+  subnets = [
+    {
+      subnet_name   = "subnet-01"
+      subnet_ip     = var.cidr
+      subnet_region = var.region
+    },
+
+  ]
+
+  secondary_ranges = {
+    subnet-01 = []
+  }
+}
+
+module "network_routes" {
+  source  = "terraform-google-modules/network/google//modules/routes"
+  version = "2.1.1"
+  network_name = module.network.network_name
+  project_id   = var.project
+  
+   routes = [
+         {
+             name                   = "egress-internet"
+             description            = "route through IGW to access internet"
+             destination_range      = "0.0.0.0/0"
+             tags                   = "egress-inet"
+             next_hop_internet      = "true"
+         },
+       
+     ]
+  }
+
+	
+
+
+
+
+
+
+module "network_fabric-net-firewall" {
+  source  = "terraform-google-modules/network/google//modules/fabric-net-firewall"
+  version = "2.3.0"
+  project_id              = var.project
+  network                 = module.network.network_name
+  internal_ranges_enabled = true
+  internal_ranges         = ["10.0.0.0/16"] 
+
+}
+
+Variables.tf
+variable "project" {
+  default = "vinmak-test-pro"
+}
+
+variable "region" {
+  default = "europe-west2" 
+}
+
+variable "zone"  {
+  default = "europe-west2-c"
+}
+
+variable "cidr_ip" {
+  default = "10.0.0.0/16"
+}
+
